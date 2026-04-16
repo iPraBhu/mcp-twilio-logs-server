@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "twilio-logs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-twilio-logs-server"
+      ],
+      "env": {
+        "TWILIO_ACCOUNT_SID": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "TWILIO_API_KEY": "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "TWILIO_API_SECRET": "your_api_secret",
+        "TWILIO_DEFAULT_LOOKBACK_DAYS": "7",
+        "TWILIO_MAX_LIMIT": "200",
+        "TWILIO_MAX_PAGE_SIZE": "100"
+      }
+    }
+  }
+}

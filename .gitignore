@@ -1,28 +1,26 @@
-node_modules
-dist
-coverage
-.nyc_output
-.turbo
-.cache
-.eslintcache
-.tsbuildinfo
-.DS_Store
-.AppleDouble
-.LSOverride
-.vscode/
-.idea/
-.fleet/
-.history/
-.tmp/
-.temp/
-.direnv/
-.envrc
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# TypeScript incremental build
+*.tsbuildinfo
+
+# npm pack artifacts
+*.tgz
+
+# credentials and local env files
 .env
 .env.*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-*.log
 *.local
-*.tgz
+
+# local Claude Code settings
+.claude/settings.local.json
+
+# logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store

@@ -197,18 +197,21 @@ export async function searchVerifyAttempts(options: SearchVerifyOptions): Promis
       }
     }
 
-    if (results.length >= options.limit && nextOffset < instances.length) {
+    if (results.length >= options.limit) {
+      const hasMore = nextOffset < instances.length || Boolean(page.nextPageUrl);
       return {
         results,
         warnings: warnings.length > 0 ? warnings : undefined,
-        nextCursor: encodeCursor<VerifyAttemptPageState>({
-          kind: options.kind,
-          scopeAccountSid: options.config.effectiveAccountSid,
-          state: {
-            ...currentState,
-            offset: currentState.offset + nextOffset
-          }
-        }, options.config.authPassword)
+        nextCursor: hasMore
+          ? encodeCursor<VerifyAttemptPageState>({
+              kind: options.kind,
+              scopeAccountSid: options.config.effectiveAccountSid,
+              state: {
+                ...currentState,
+                offset: currentState.offset + nextOffset
+              }
+            }, options.config.authPassword)
+          : undefined
       };
     }
 
@@ -304,18 +307,21 @@ export async function listVerifyServices(options: {
       }
     }
 
-    if (results.length >= options.limit && nextOffset < instances.length) {
+    if (results.length >= options.limit) {
+      const hasMore = nextOffset < instances.length || Boolean(page.nextPageUrl);
       return {
         results,
         warnings: warnings.length > 0 ? warnings : undefined,
-        nextCursor: encodeCursor<VerifyServicePageState>({
-          kind: options.kind,
-          scopeAccountSid: options.config.effectiveAccountSid,
-          state: {
-            ...currentState,
-            offset: currentState.offset + nextOffset
-          }
-        }, options.config.authPassword)
+        nextCursor: hasMore
+          ? encodeCursor<VerifyServicePageState>({
+              kind: options.kind,
+              scopeAccountSid: options.config.effectiveAccountSid,
+              state: {
+                ...currentState,
+                offset: currentState.offset + nextOffset
+              }
+            }, options.config.authPassword)
+          : undefined
       };
     }
 

@@ -189,7 +189,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
         });
 
         return {
-          content: [{ type: "text", text: makeResultText("search_message_logs", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
+          content: [{ type: "text", text: makeResultText("search_message_logs", structuredContent.count, structuredContent, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {
@@ -228,7 +228,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
 
         log("info", "tool_success", { tool: "get_message_by_sid", count: 1 });
         return {
-          content: [{ type: "text", text: makeResultText("get_message_by_sid", structuredContent.count) }],
+          content: [{ type: "text", text: makeResultText("get_message_by_sid", structuredContent.count, structuredContent) }],
           structuredContent
         };
       } catch (error) {
@@ -313,7 +313,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
         });
 
         return {
-          content: [{ type: "text", text: makeResultText("search_message_logs_by_phone", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
+          content: [{ type: "text", text: makeResultText("search_message_logs_by_phone", structuredContent.count, structuredContent, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {

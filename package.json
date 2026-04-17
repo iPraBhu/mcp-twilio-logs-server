@@ -1,6 +1,6 @@
 {
   "name": "mcp-twilio-logs-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only MCP stdio server for inspecting Twilio Messaging and Verify logs.",
   "type": "module",
   "license": "MIT",

@@ -1,4 +1,5 @@
 export type AuthMode = "account_token" | "api_key";
+export type LogLevel = "debug" | "error" | "info" | "warn";
 
 export interface ServerConfig {
   accountSid: string;
@@ -10,6 +11,8 @@ export interface ServerConfig {
   defaultLookbackDays: number;
   maxLimit: number;
   maxPageSize: number;
+  maxRetries: number;
+  logLevel: LogLevel;
   requestTimeoutMs: number;
 }
 

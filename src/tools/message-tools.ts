@@ -7,6 +7,7 @@ import { searchMessages, normalizeMessage } from "../twilio/messaging.js";
 import { invalidParams, mapTwilioError, getErrorLogDetails } from "../utils/errors.js";
 import { resolveTimeRange } from "../utils/time.js";
 import { log } from "../utils/logging.js";
+import { makeResultText } from "./content.js";
 import { makeBaseResultSchema, messageRecordSchema } from "./output-schemas.js";
 
 const messageDirectionSchema = z.enum(["inbound", "outbound-api", "outbound-call", "outbound-reply"]);
@@ -27,10 +28,13 @@ const messageStatusSchema = z.enum([
 ]);
 
 const dateInputSchema = z
-  .union([z.date(), z.string()])
-  .transform((value) => (value instanceof Date ? value : new Date(value)));
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), "Must be a valid ISO 8601 date-time string.")
+  .transform((value) => new Date(value));
 
 function makeCommonSearchSchema(config: ServerConfig) {
+  const defaultPageSize = Math.min(config.maxPageSize, config.maxLimit);
+
   return {
     startTime: dateInputSchema.optional().describe("Inclusive start time in ISO 8601 format. Defaults to the configured lookback window."),
     endTime: dateInputSchema.optional().describe("Inclusive end time in ISO 8601 format. Defaults to now."),
@@ -46,8 +50,8 @@ function makeCommonSearchSchema(config: ServerConfig) {
       .int()
       .positive()
       .max(config.maxPageSize)
-      .default(Math.min(50, config.maxPageSize))
-      .describe(`Twilio page size. Default 50. Maximum ${config.maxPageSize}.`),
+      .default(defaultPageSize)
+      .describe(`Twilio page size. Default ${defaultPageSize}. Maximum ${config.maxPageSize}.`),
     cursor: z
       .string()
       .optional()
@@ -142,6 +146,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
       ensureCursorOnlyRequest(args, ["cursor", "includeRaw", "limit", "pageSize"]);
 
       try {
+        const pageSize = Math.min(args.pageSize, args.limit);
         const { start, end, timeRange } = resolveTimeRange(
           { startTime: args.startTime, endTime: args.endTime },
           config,
@@ -155,7 +160,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
           direction: args.direction,
           errorCode: args.errorCode,
           limit: args.limit,
-          pageSize: args.pageSize
+          pageSize
         };
 
         const searchResult = await searchMessages({
@@ -168,7 +173,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
           includeRaw: args.includeRaw,
           kind: "search_message_logs",
           limit: args.limit,
-          pageSize: args.pageSize,
+          pageSize,
           phoneNumber: args.phoneNumber,
           query,
           status: args.status,
@@ -184,7 +189,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
         });
 
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("search_message_logs", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {
@@ -223,7 +228,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
 
         log("info", "tool_success", { tool: "get_message_by_sid", count: 1 });
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("get_message_by_sid", structuredContent.count) }],
           structuredContent
         };
       } catch (error) {
@@ -269,6 +274,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
       ensureCursorOnlyRequest(args, ["cursor", "includeRaw", "limit", "pageSize"]);
 
       try {
+        const pageSize = Math.min(args.pageSize, args.limit);
         const { start, end, timeRange } = resolveTimeRange(
           { startTime: args.startTime, endTime: args.endTime },
           config,
@@ -280,7 +286,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
           status: args.status,
           errorCode: args.errorCode,
           limit: args.limit,
-          pageSize: args.pageSize
+          pageSize
         };
 
         const searchResult = await searchMessages({
@@ -292,7 +298,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
           includeRaw: args.includeRaw,
           kind: "search_message_logs_by_phone",
           limit: args.limit,
-          pageSize: args.pageSize,
+          pageSize,
           phoneNumber: args.phoneNumber,
           query,
           status: args.status,
@@ -307,7 +313,7 @@ export function registerMessageTools(server: McpServer, client: TwilioReadClient
         });
 
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("search_message_logs_by_phone", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {

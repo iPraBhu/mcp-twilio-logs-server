@@ -11,6 +11,8 @@ const baseConfig = {
   defaultLookbackDays: 7,
   maxLimit: 200,
   maxPageSize: 100,
+  maxRetries: 1,
+  logLevel: "warn" as const,
   requestTimeoutMs: 15000
 };
 

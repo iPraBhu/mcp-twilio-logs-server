@@ -52,7 +52,7 @@ export class TwilioReadClient {
       accountSid: this.config.effectiveAccountSid,
       autoRetry: true,
       lazyLoading: true,
-      maxRetries: 3,
+      maxRetries: this.config.maxRetries,
       timeout: this.config.requestTimeoutMs
     });
   }

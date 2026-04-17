@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./constants.js";
 import { loadConfig } from "./config.js";
 import { createServer } from "./server.js";
-import { log } from "./utils/logging.js";
+import { configureLogging, log } from "./utils/logging.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -13,6 +13,7 @@ async function main(): Promise<void> {
   }
 
   const config = loadConfig();
+  configureLogging(config.logLevel);
   const server = createServer(config);
   const transport = new StdioServerTransport();
 

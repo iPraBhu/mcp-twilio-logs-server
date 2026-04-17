@@ -13,6 +13,7 @@ import { fetchVerifyAttempt, listVerifyServices, normalizeVerifyService, searchV
 import { invalidParams, mapTwilioError, getErrorLogDetails } from "../utils/errors.js";
 import { log } from "../utils/logging.js";
 import { resolveTimeRange } from "../utils/time.js";
+import { makeResultText } from "./content.js";
 import {
   makeBaseResultSchema,
   verifyAttemptRecordSchema,
@@ -22,8 +23,9 @@ import {
 const verifyChannelSchema = z.enum(["call", "email", "rbm", "sms", "whatsapp"]);
 const verifyStatusSchema = z.enum(["converted", "unconverted"]);
 const dateInputSchema = z
-  .union([z.date(), z.string()])
-  .transform((value) => (value instanceof Date ? value : new Date(value)));
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), "Must be a valid ISO 8601 date-time string.")
+  .transform((value) => new Date(value));
 
 function ensureCursorOnlyRequest<T extends Record<string, unknown>>(args: T, allowed: string[]): void {
   if (!args.cursor) {
@@ -99,6 +101,7 @@ function buildVerifyAttemptSingleResult(
 }
 
 export function registerVerifyTools(server: McpServer, client: TwilioReadClient, config: ServerConfig): void {
+  const defaultPageSize = Math.min(config.maxPageSize, config.maxLimit);
   const commonSearchSchema = {
     startTime: dateInputSchema
       .optional()
@@ -116,8 +119,8 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
       .int()
       .positive()
       .max(config.maxPageSize)
-      .default(Math.min(50, config.maxPageSize))
-      .describe(`Twilio page size. Default 50. Maximum ${config.maxPageSize}.`),
+      .default(defaultPageSize)
+      .describe(`Twilio page size. Default ${defaultPageSize}. Maximum ${config.maxPageSize}.`),
     cursor: z
       .string()
       .optional()
@@ -169,6 +172,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
       ensureCursorOnlyRequest(args, ["cursor", "includeRaw", "limit", "pageSize"]);
 
       try {
+        const pageSize = Math.min(args.pageSize, args.limit);
         const { start, end, timeRange } = resolveTimeRange(
           { startTime: args.startTime, endTime: args.endTime },
           config,
@@ -182,7 +186,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           status: args.status,
           channel: args.channel,
           limit: args.limit,
-          pageSize: args.pageSize
+          pageSize
         };
 
         const searchResult = await searchVerifyAttempts({
@@ -192,7 +196,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           includeRaw: args.includeRaw,
           kind: "search_verify_logs",
           limit: args.limit,
-          pageSize: args.pageSize,
+          pageSize,
           phoneNumber: args.phoneNumber,
           query,
           status: args.status,
@@ -210,7 +214,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
         });
 
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("search_verify_logs", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {
@@ -254,6 +258,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
       ensureCursorOnlyRequest(args, ["cursor", "includeRaw", "limit", "pageSize"]);
 
       try {
+        const pageSize = Math.min(args.pageSize, args.limit);
         const { start, end, timeRange } = resolveTimeRange(
           { startTime: args.startTime, endTime: args.endTime },
           config,
@@ -266,7 +271,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           status: args.status,
           channel: args.channel,
           limit: args.limit,
-          pageSize: args.pageSize
+          pageSize
         };
 
         const searchResult = await searchVerifyAttempts({
@@ -276,7 +281,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           includeRaw: args.includeRaw,
           kind: "search_verify_logs_by_phone",
           limit: args.limit,
-          pageSize: args.pageSize,
+          pageSize,
           phoneNumber: args.phoneNumber,
           query,
           status: args.status,
@@ -293,7 +298,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
         });
 
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("search_verify_logs_by_phone", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {
@@ -328,7 +333,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
 
         log("info", "tool_success", { tool: "get_verify_attempt_by_sid", count: 1 });
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("get_verify_attempt_by_sid", structuredContent.count) }],
           structuredContent
         };
       } catch (error) {
@@ -368,7 +373,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
 
         log("info", "tool_success", { tool: "get_verify_service", count: 1 });
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("get_verify_service", structuredContent.count) }],
           structuredContent
         };
       } catch (error) {
@@ -399,8 +404,8 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           .int()
           .positive()
           .max(config.maxPageSize)
-          .default(Math.min(50, config.maxPageSize))
-          .describe(`Twilio page size. Default 50. Maximum ${config.maxPageSize}.`),
+          .default(defaultPageSize)
+          .describe(`Twilio page size. Default ${defaultPageSize}. Maximum ${config.maxPageSize}.`),
         cursor: z
           .string()
           .optional()
@@ -412,6 +417,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
       log("info", "tool_invocation", { tool: "list_verify_services" });
 
       try {
+        const pageSize = Math.min(args.pageSize, args.limit);
         const listResult = await listVerifyServices({
           client,
           config,
@@ -419,17 +425,17 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
           includeRaw: args.includeRaw,
           kind: "list_verify_services",
           limit: args.limit,
-          pageSize: args.pageSize,
+          pageSize,
           query: {
             limit: args.limit,
-            pageSize: args.pageSize
+            pageSize
           }
         });
 
         const structuredContent = buildVerifyServiceResult(
           config,
           listResult,
-          { limit: args.limit, pageSize: args.pageSize },
+          { limit: args.limit, pageSize },
         );
 
         log("info", "tool_success", {
@@ -439,7 +445,7 @@ export function registerVerifyTools(server: McpServer, client: TwilioReadClient,
         });
 
         return {
-          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          content: [{ type: "text", text: makeResultText("list_verify_services", structuredContent.count, { nextCursor: structuredContent.nextCursor }) }],
           structuredContent
         };
       } catch (error) {

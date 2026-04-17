@@ -34,6 +34,7 @@ This server is intentionally architected to be read-only:
 This package is intended to be safe to run as a local MCP stdio server and includes a few practical guardrails:
 
 - Credentials are loaded from environment variables only.
+- Credentials can be supplied directly through environment variables or through a local env file referenced by one environment variable.
 - Secrets are never logged.
 - The transport is `stdio` only.
 - Pagination cursors are signed server-side, so callers cannot tamper with them to redirect follow-up requests.
@@ -109,7 +110,35 @@ Supported environment variables:
 - `TWILIO_DEFAULT_LOOKBACK_DAYS` optional, default `7`
 - `TWILIO_MAX_LIMIT` optional, default `200`
 - `TWILIO_MAX_PAGE_SIZE` optional, default `100`
+- `TWILIO_MAX_RETRIES` optional, default `1`
+- `TWILIO_LOG_LEVEL` optional, default `warn`
+- `TWILIO_LOGS_MCP_ENV_FILE` optional path to a dotenv-style env file
 - `TWILIO_REQUEST_TIMEOUT_MS` optional, default `15000`
+
+Direct environment variables override values loaded from `TWILIO_LOGS_MCP_ENV_FILE`.
+
+### MCP env file option
+
+If you do not want to inline Twilio credentials in your MCP client config, point the server at a local env file:
+
+```dotenv
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_SECRET=your_api_secret
+TWILIO_DEFAULT_LOOKBACK_DAYS=7
+TWILIO_MAX_LIMIT=200
+TWILIO_MAX_PAGE_SIZE=100
+TWILIO_MAX_RETRIES=1
+TWILIO_LOG_LEVEL=warn
+```
+
+Then set this in your MCP client config `env` block:
+
+```json
+{
+  "TWILIO_LOGS_MCP_ENV_FILE": "/absolute/path/to/.twilio-logs-mcp-env"
+}
+```
 
 ### Recommended auth mode: API Key + API Secret
 
@@ -194,12 +223,7 @@ Example `stdio` client configuration:
         "/absolute/path/to/node_modules/mcp-twilio-logs-server/dist/index.js"
       ],
       "env": {
-        "TWILIO_ACCOUNT_SID": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "TWILIO_API_KEY": "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "TWILIO_API_SECRET": "your_api_secret",
-        "TWILIO_DEFAULT_LOOKBACK_DAYS": "7",
-        "TWILIO_MAX_LIMIT": "200",
-        "TWILIO_MAX_PAGE_SIZE": "100"
+        "TWILIO_LOGS_MCP_ENV_FILE": "/absolute/path/to/.twilio-logs-mcp-env"
       }
     }
   }
@@ -218,14 +242,14 @@ If you prefer `npx`:
         "mcp-twilio-logs-server"
       ],
       "env": {
-        "TWILIO_ACCOUNT_SID": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "TWILIO_API_KEY": "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "TWILIO_API_SECRET": "your_api_secret"
+        "TWILIO_LOGS_MCP_ENV_FILE": "/absolute/path/to/.twilio-logs-mcp-env"
       }
     }
   }
 }
 ```
+
+If you prefer inline values, direct environment variables still work and override env-file values when both are present.
 
 ## Tools
 
@@ -250,7 +274,8 @@ Notes:
 
 - If no time range is provided, the server defaults to the last 7 days or `TWILIO_DEFAULT_LOOKBACK_DAYS`.
 - `from`, `to`, and time-range filters are pushed down to Twilio where possible.
-- `status`, `direction`, `errorCode`, and `phoneNumber` may require additional local filtering depending on the query shape.
+- `status`, `direction`, and `errorCode` may require additional local filtering depending on the query shape.
+- `phoneNumber` without an explicit `direction` now runs parallel `from` and `to` searches and merges the results.
 
 ### `get_message_by_sid`
 
@@ -276,7 +301,7 @@ Parameters:
 
 Notes:
 
-- Supplying `direction` improves efficiency because the server can better align the query with Twilio `from`/`to` filters.
+- Supplying `direction` still helps, but when omitted the server now queries both `from` and `to` in parallel instead of scanning a broader message set locally.
 
 ### `search_verify_logs`
 
@@ -415,7 +440,7 @@ Pagination is intentionally conservative and operator-friendly.
 Defaults:
 
 - `limit`: `50`
-- `pageSize`: `50`
+- `pageSize`: `100` by default, capped by `limit` and `TWILIO_MAX_PAGE_SIZE`
 
 Maximums by default:
 
@@ -426,6 +451,7 @@ These defaults can be changed with:
 
 - `TWILIO_MAX_LIMIT`
 - `TWILIO_MAX_PAGE_SIZE`
+- `TWILIO_MAX_RETRIES`
 
 Cursor behavior:
 
@@ -440,11 +466,8 @@ The server writes minimal structured logs to `stderr` only.
 
 It logs:
 
-- startup information
-- auth mode in use
-- configured account and subaccount scope
-- tool invocation name
-- success and failure summaries
+- warnings and errors by default
+- debug/info logs when `TWILIO_LOG_LEVEL` is lowered to `debug` or `info`
 
 It never logs:
 

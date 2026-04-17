@@ -23,7 +23,7 @@
     "stdio"
   ],
   "bin": {
-    "mcp-twilio-logs-server": "./dist/index.js"
+    "mcp-twilio-logs-server": "dist/index.js"
   },
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",
